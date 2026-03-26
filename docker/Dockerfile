@@ -6,9 +6,12 @@ WORKDIR /app
 
 COPY Cargo.toml Cargo.lock rust-toolchain.toml ./
 COPY website website
+COPY modules modules
 COPY crates crates
 RUN rm -rf crates/brk_website/website \
     && ln -s ../../website crates/brk_website/website \
+    && rm -rf website/scripts/modules \
+    && ln -s ../../modules website/scripts/modules \
     && cargo build --release --locked
 
 FROM debian:bookworm-slim
