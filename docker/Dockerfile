@@ -21,8 +21,9 @@ RUN apt-get update && apt-get install -y ca-certificates curl gosu && rm -rf /va
 RUN useradd -m -s /bin/bash brk
 
 COPY --from=builder /app/target/release/brk /usr/local/bin/brk
-COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh
+
+RUN printf '#!/bin/sh\nset -e\nchown -R brk:brk /home/brk/.brk\nexec gosu brk brk "$@"\n' > /usr/local/bin/entrypoint.sh \
+    && chmod +x /usr/local/bin/entrypoint.sh
 
 RUN mkdir -p /home/brk/.brk
 
