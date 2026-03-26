@@ -5,13 +5,15 @@ RUN apt-get update && apt-get install -y pkg-config libssl-dev && rm -rf /var/li
 WORKDIR /app
 
 COPY Cargo.toml Cargo.lock rust-toolchain.toml ./
+COPY website website
 COPY crates crates
-
-RUN cargo build --release --locked
+RUN rm -rf crates/brk_website/website \
+    && ln -s ../../website crates/brk_website/website \
+    && cargo build --release --locked
 
 FROM debian:bookworm-slim
 
-RUN apt-get update && apt-get install -y ca-certificates procps && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y ca-certificates curl && rm -rf /var/lib/apt/lists/*
 
 RUN useradd -m -s /bin/bash brk
 
