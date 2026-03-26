@@ -16,13 +16,13 @@ RUN rm -rf crates/brk_website/website \
 
 FROM debian:bookworm-slim
 
-RUN apt-get update && apt-get install -y ca-certificates curl && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y ca-certificates curl gosu && rm -rf /var/lib/apt/lists/*
 
 RUN useradd -m -s /bin/bash brk
 
 COPY --from=builder /app/target/release/brk /usr/local/bin/brk
-
-USER brk
+COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
 
 RUN mkdir -p /home/brk/.brk
 
@@ -30,4 +30,4 @@ EXPOSE 3110
 
 WORKDIR /home/brk
 
-ENTRYPOINT ["brk"]
+ENTRYPOINT ["entrypoint.sh"]
