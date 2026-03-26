@@ -23,11 +23,8 @@ jobs:
       packages: write
 
     steps:
-      - name: Checkout BRK source
+      - name: Checkout BRK source (our fork with fixed Dockerfile)
         uses: actions/checkout@v4
-        with:
-          repository: bitcoinresearchkit/brk
-          ref: ${{ github.event.inputs.version }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
