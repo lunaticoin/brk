@@ -47,7 +47,8 @@ jobs:
           context: .
           file: docker/Dockerfile
           platforms: ${{ matrix.platform }}
-          no-cache: true
+          cache-from: type=gha,scope=${{ steps.prep.outputs.pair }}
+          cache-to: type=gha,mode=max,scope=${{ steps.prep.outputs.pair }}
           outputs: type=image,name=ghcr.io/${{ github.repository_owner }}/brk,push-by-digest=true,name-canonical=true,push=true
 
       - name: Export digest
