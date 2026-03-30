@@ -21,14 +21,11 @@ impl Vecs {
         starting_indexes: &Indexes,
         exit: &Exit,
     ) -> Result<()> {
+        self.db.sync_bg_tasks()?;
+
         // 1. Compute burned/unspendable supply
-        self.burned.compute(
-            scripts,
-            mining,
-            prices,
-            starting_indexes,
-            exit,
-        )?;
+        self.burned
+            .compute(scripts, mining, prices, starting_indexes, exit)?;
 
         // 2. Compute inflation rate: (supply[h] / supply[1y_ago]) - 1
         // Skip when lookback supply <= first block (50 BTC = 5B sats),
@@ -76,8 +73,11 @@ impl Vecs {
             )?;
         }
 
-        let _lock = exit.lock();
-        self.db.compact()?;
+        let exit = exit.clone();
+        self.db.run_bg(move |db| {
+            let _lock = exit.lock();
+            db.compact_deferred_default()
+        });
 
         Ok(())
     }

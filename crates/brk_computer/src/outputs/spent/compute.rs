@@ -10,13 +10,13 @@ use crate::inputs;
 const HEIGHT_BATCH: u32 = 10_000;
 
 impl Vecs {
-    pub(crate) fn compute<'a>(
+    pub(crate) fn compute(
         &mut self,
         indexer: &Indexer,
         inputs: &inputs::Vecs,
         starting_indexes: &Indexes,
-        exit: &'a Exit,
-    ) -> Result<ExitGuard<'a>> {
+        exit: &Exit,
+    ) -> Result<ExitGuard> {
         let target_height = indexer.vecs.blocks.blockhash.len();
         if target_height == 0 {
             return Ok(exit.lock());
@@ -46,7 +46,12 @@ impl Vecs {
             let mut hi = starting_indexes.height.to_usize() + 1;
             while lo < hi {
                 let mid = lo + (hi - lo) / 2;
-                if first_txout_index_vec.collect_one_at(mid).unwrap().to_usize() <= min_txout_index {
+                if first_txout_index_vec
+                    .collect_one_at(mid)
+                    .unwrap()
+                    .to_usize()
+                    <= min_txout_index
+                {
                     lo = mid + 1;
                 } else {
                     hi = mid;

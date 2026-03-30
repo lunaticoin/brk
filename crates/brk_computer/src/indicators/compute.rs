@@ -2,7 +2,7 @@ use brk_error::Result;
 use brk_types::{Bitcoin, Dollars, Indexes, StoredF32};
 use vecdb::Exit;
 
-use super::{gini, Vecs};
+use super::{Vecs, gini};
 use crate::{distribution, internal::RatioDollarsBp32, market, mining, transactions};
 
 impl Vecs {
@@ -16,6 +16,8 @@ impl Vecs {
         starting_indexes: &Indexes,
         exit: &Exit,
     ) -> Result<()> {
+        self.db.sync_bg_tasks()?;
+
         // Puell Multiple: daily_subsidy_usd / sma_365d_subsidy_usd
         self.puell_multiple
             .bps
@@ -124,22 +126,20 @@ impl Vecs {
             )?;
 
         // Supply-Adjusted Dormancy = dormancy / circulating_supply_btc
-        self.dormancy.supply_adjusted
-            .height
-            .compute_transform2(
-                starting_indexes.height,
-                &all_activity.dormancy._24h.height,
-                supply_total_sats,
-                |(i, dormancy, supply_sats, ..)| {
-                    let supply = f64::from(Bitcoin::from(supply_sats));
-                    if supply == 0.0 {
-                        (i, StoredF32::from(0.0f32))
-                    } else {
-                        (i, StoredF32::from((f64::from(dormancy) / supply) as f32))
-                    }
-                },
-                exit,
-            )?;
+        self.dormancy.supply_adjusted.height.compute_transform2(
+            starting_indexes.height,
+            &all_activity.dormancy._24h.height,
+            supply_total_sats,
+            |(i, dormancy, supply_sats, ..)| {
+                let supply = f64::from(Bitcoin::from(supply_sats));
+                if supply == 0.0 {
+                    (i, StoredF32::from(0.0f32))
+                } else {
+                    (i, StoredF32::from((f64::from(dormancy) / supply) as f32))
+                }
+            },
+            exit,
+        )?;
 
         // Stock-to-Flow: supply / annual_issuance
         // annual_issuance ≈ subsidy_per_block × 52560 (blocks/year)
@@ -152,9 +152,10 @@ impl Vecs {
                 if annual_flow == 0.0 {
                     (i, StoredF32::from(0.0f32))
                 } else {
-                    (i, StoredF32::from(
-                        (supply_sats.as_u128() as f64 / annual_flow) as f32,
-                    ))
+                    (
+                        i,
+                        StoredF32::from((supply_sats.as_u128() as f64 / annual_flow) as f32),
+                    )
                 }
             },
             exit,
@@ -178,29 +179,31 @@ impl Vecs {
         )?;
 
         // Seller Exhaustion Constant: % supply_in_profit × 30d_volatility
-        self.seller_exhaustion
-            .height
-            .compute_transform3(
-                starting_indexes.height,
-                &all_metrics.supply.in_profit.sats.height,
-                &market.volatility._1m.height,
-                supply_total_sats,
-                |(i, profit_sats, volatility, total_sats, ..)| {
-                    let total = total_sats.as_u128() as f64;
-                    if total == 0.0 {
-                        (i, StoredF32::from(0.0f32))
-                    } else {
-                        let pct_in_profit = profit_sats.as_u128() as f64 / total;
-                        (i, StoredF32::from(
-                            (pct_in_profit * f64::from(volatility)) as f32,
-                        ))
-                    }
-                },
-                exit,
-            )?;
+        self.seller_exhaustion.height.compute_transform3(
+            starting_indexes.height,
+            &all_metrics.supply.in_profit.sats.height,
+            &market.volatility._1m.height,
+            supply_total_sats,
+            |(i, profit_sats, volatility, total_sats, ..)| {
+                let total = total_sats.as_u128() as f64;
+                if total == 0.0 {
+                    (i, StoredF32::from(0.0f32))
+                } else {
+                    let pct_in_profit = profit_sats.as_u128() as f64 / total;
+                    (
+                        i,
+                        StoredF32::from((pct_in_profit * f64::from(volatility)) as f32),
+                    )
+                }
+            },
+            exit,
+        )?;
 
-        let _lock = exit.lock();
-        self.db.compact()?;
+        let exit = exit.clone();
+        self.db.run_bg(move |db| {
+            let _lock = exit.lock();
+            db.compact_deferred_default()
+        });
         Ok(())
     }
 }

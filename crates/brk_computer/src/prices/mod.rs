@@ -11,8 +11,8 @@ use vecdb::{Database, ReadableCloneableVec, Rw, StorageMode};
 use crate::{
     indexes,
     internal::{
-        CentsUnsignedToDollars, CentsUnsignedToSats, PerBlock, Resolutions,
-        EagerIndexes, LazyEagerIndexes, LazyPerBlock, OhlcCentsToDollars, OhlcCentsToSats,
+        CentsUnsignedToDollars, CentsUnsignedToSats, EagerIndexes, LazyEagerIndexes, LazyPerBlock,
+        OhlcCentsToDollars, OhlcCentsToSats, PerBlock, Resolutions,
         db_utils::{finalize_db, open_db},
     },
 };
@@ -25,7 +25,7 @@ pub const DB_NAME: &str = "prices";
 #[derive(Traversable)]
 pub struct Vecs<M: StorageMode = Rw> {
     #[traversable(skip)]
-    pub(crate) db: Database,
+    pub db: Database,
 
     pub split: SplitByUnit<M>,
     pub ohlc: OhlcByUnit<M>,
@@ -181,9 +181,5 @@ impl Vecs {
             ohlc,
             spot,
         })
-    }
-
-    pub(crate) fn db(&self) -> &Database {
-        &self.db
     }
 }

@@ -4,9 +4,9 @@ use brk_error::{Error, Result};
 use brk_traversable::TreeNode;
 use brk_types::{
     Date, DetailedSeriesCount, Epoch, Etag, Format, Halving, Height, Index, IndexInfo, LegacyValue,
-    Limit, SeriesName, SeriesData, SeriesInfo, SeriesOutput, SeriesOutputLegacy, SeriesSelection,
-    Output, OutputLegacy, PaginatedSeries, Pagination, PaginationIndex, RangeIndex, RangeMap,
-    SearchQuery, Timestamp, Version,
+    Limit, Output, OutputLegacy, PaginatedSeries, Pagination, PaginationIndex, RangeIndex,
+    RangeMap, SearchQuery, SeriesData, SeriesInfo, SeriesName, SeriesOutput, SeriesOutputLegacy,
+    SeriesSelection, Timestamp, Version,
 };
 use parking_lot::RwLock;
 use vecdb::{AnyExportableVec, ReadableVec};
@@ -46,7 +46,8 @@ impl Query {
 
         // Series doesn't exist, suggest alternatives
         let matches = self
-            .vecs().matches(series, Limit::DEFAULT)
+            .vecs()
+            .matches(series, Limit::DEFAULT)
             .into_iter()
             .map(|s| s.to_string())
             .collect();
@@ -261,7 +262,12 @@ impl Query {
         }
 
         let ResolvedQuery {
-            vecs, version, total, start, end, ..
+            vecs,
+            version,
+            total,
+            start,
+            end,
+            ..
         } = resolved;
 
         let count = end.saturating_sub(start);
@@ -309,7 +315,10 @@ impl Query {
     }
 
     pub fn series_info(&self, series: &SeriesName) -> Option<SeriesInfo> {
-        let index_to_vec = self.vecs().series_to_index_to_vec.get(series.replace("-", "_").as_str())?;
+        let index_to_vec = self
+            .vecs()
+            .series_to_index_to_vec
+            .get(series.replace("-", "_").as_str())?;
         let value_type = index_to_vec.values().next()?.value_type_to_string();
         let indexes = index_to_vec.keys().copied().collect();
         Some(SeriesInfo {
@@ -373,7 +382,7 @@ impl Query {
         // Slow path: rebuild from computer's precomputed monotonic timestamps
         let mut map = HEIGHT_BY_MONOTONIC_TIMESTAMP.write();
         if map.len() <= current_height {
-            *map = RangeMap::from(self.computer().blocks.time.timestamp_monotonic.collect());
+            *map = RangeMap::from(self.computer().indexes.timestamp.monotonic.collect());
         }
         map.ceil(ts).map(usize::from).unwrap_or(current_height)
     }
